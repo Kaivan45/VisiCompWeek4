@@ -1,0 +1,14 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "java",
+            "name": "App",
+            "request": "launch",
+            "mainClass": "com.codedotorg.App",
+            "projectName": "rockpaperscissors",
+            "preLaunchTask": "Run Rock, Paper, Scissors Game",
+            "args": []
+        }
+    ]
+}
