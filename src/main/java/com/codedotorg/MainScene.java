@@ -1,135 +1,97 @@
 package com.codedotorg;
 
 import com.codedotorg.modelmanager.CameraController;
-import javafx.animation.KeyFrame;
-import javafx.animation.Timeline;
 import javafx.application.Platform;
 import javafx.geometry.Pos;
+import javafx.geometry.Insets;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.image.ImageView;
-import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
-import javafx.util.Duration;
 
 public class MainScene {
-    
     private VBox rootLayout;
     private ImageView cameraView;
-    private Label titleLabel;
-    private Label computerChoiceLabel;
-    private Label predictionLabel;
-    private Label promptLabel;
+    private Label titleLabel, computerChoiceLabel, predictionLabel, promptLabel;
     private Button exitButton;
     private Loading cameraLoading;
-    private boolean firstCapture;
-
-    private int counter = 3;
-    private boolean isCounting = false;
-
-    /**
-     * FUNGSI BARU: Menampilkan hasil akhir ke layar
-     * Panggil ini dari RockPaperScissors.java atau App.java
-     */
-    public void updateGameResult(String resultText) {
-        Platform.runLater(() -> {
-            // Kita gunakan promptLabel atau titleLabel untuk pamer hasil agar terlihat besar
-            promptLabel.setText(resultText); 
-            System.out.println("Tampilan Layar: " + resultText);
-        });
-    }
-
-    public void startCountdown() {
-        if (isCounting) return;
-        isCounting = true;
-
-        Timeline timeline = new Timeline(new KeyFrame(Duration.seconds(1), e -> {
-            if (counter > 0) {
-                Platform.runLater(() -> promptLabel.setText("SIAP-SIAP: " + counter));
-                counter--;
-            } else {
-                Platform.runLater(() -> promptLabel.setText("GO!"));
-                isCounting = false;
-                counter = 3;
-            }
-        }));
-        
-        timeline.setCycleCount(4);
-        timeline.play();
-    }
+    private boolean firstCapture = true;
 
     public MainScene() {
         cameraView = new ImageView();
-        cameraView.setId("camera");
+        cameraView.setId("camera"); // PENTING: ID untuk CSS dan Model
+        cameraView.setFitWidth(400);
+        cameraView.setPreserveRatio(true);
+        cameraView.getStyleClass().add("camera-view");
 
-        exitButton = new Button("Exit");
-        
-        titleLabel = new Label("Rock, Paper, Scissors");
-        titleLabel.setId("titleLabel");
+        titleLabel = new Label("AI ROCK PAPER SCISSORS");
+        titleLabel.getStyleClass().add("title-text");
 
-        computerChoiceLabel = new Label("");
-        predictionLabel = new Label("");
-        promptLabel = new Label("Make your choice!"); // Ini yang akan kita update
+        promptLabel = new Label("Tunjukkan Tanganmu!");
+        promptLabel.getStyleClass().add("prompt-text");
 
-        cameraLoading = new Loading();  
-        firstCapture = true; 
+        computerChoiceLabel = new Label("KOMPUTER: MENUNGGU...");
+        computerChoiceLabel.getStyleClass().add("status-label");
+
+        predictionLabel = new Label("ANDA: -");
+        predictionLabel.getStyleClass().add("status-label");
+
+        exitButton = new Button("KELUAR");
+        exitButton.getStyleClass().add("exit-button");
+
+        // Buat objek loading di sini
+        cameraLoading = new Loading();
     }
 
     public Scene createMainScene(CameraController cameraController) {
         createExitButtonAction(cameraController);
 
-        rootLayout = new VBox();
+        rootLayout = new VBox(20);
         rootLayout.setAlignment(Pos.CENTER);
+        rootLayout.setPadding(new Insets(30));
+        rootLayout.getStyleClass().add("main-background");
 
-        Region cameraSpacer1 = createSpacer(20);
-        Region cameraSpacer2 = createSpacer(20);
-        Region buttonSpacer = createSpacer(10);
+        VBox header = new VBox(10, titleLabel, promptLabel);
+        header.setAlignment(Pos.CENTER);
 
-        rootLayout.getChildren().addAll(titleLabel, promptLabel, cameraLoading.getCameraLoadingLabel(),
-            cameraSpacer1, cameraView, cameraSpacer2, cameraLoading.getProgressIndicator(), 
-            computerChoiceLabel, predictionLabel, buttonSpacer, exitButton);
+        VBox centerArea = new VBox(15, cameraView, computerChoiceLabel, predictionLabel);
+        centerArea.setAlignment(Pos.CENTER);
 
-        if (!isFirstCapture()) {
+        rootLayout.getChildren().clear();
+        rootLayout.getChildren().addAll(header, centerArea, exitButton);
+
+        // Jika ini bukan pertama kali (reset game), sembunyikan loading
+        if (!firstCapture) {
             cameraLoading.hideLoadingAnimation(rootLayout, cameraView);
-        } else {
-            setFirstCaptureFalse();
         }
 
-        Scene mainScene = new Scene(rootLayout, 600, 750);
-        mainScene.getStylesheets().add(getClass().getResource("/styles.css").toExternalForm());
-
-        return mainScene;
-    }
-
-    public void showUserResponse(String predictedClass, double predictedScore) {
-        cameraLoading.hideLoadingAnimation(rootLayout, cameraView);
+        Scene scene = new Scene(rootLayout, 650, 850);
+        scene.getStylesheets().add(getClass().getResource("/styles.css").toExternalForm());
         
-        // Membersihkan nama label (misal "0 rock" jadi "rock")
-        String user = predictedClass.contains(" ") ? 
-                       predictedClass.substring(predictedClass.indexOf(" ") + 1) : 
-                       predictedClass;
-
-        int percentage = (int)(predictedScore * 100);
-        String userResult = "User: " + user + " (" + percentage + "%)";
-
-        Platform.runLater(() -> predictionLabel.setText(userResult));
+        return scene;
     }
 
-    // ... (Fungsi helper lainnya tetap sama)
+    // FUNGSI KRITIS: Dipanggil dari RockPaperScissors untuk mematikan loading
+    public void stopLoading() {
+        Platform.runLater(() -> {
+            cameraLoading.hideLoadingAnimation(rootLayout, cameraView);
+            firstCapture = false;
+        });
+    }
+
+    public void updateGameResult(String text) { Platform.runLater(() -> promptLabel.setText(text)); }
+    public void showComputerChoice(String choice) {
+        Platform.runLater(() -> computerChoiceLabel.setText("KOMPUTER: " + choice.toUpperCase()));
+    }
+    public void showUserResponse(String res, double score) {
+        Platform.runLater(() -> predictionLabel.setText("ANDA: " + res.toUpperCase()));
+    }
+    
     public ImageView getCameraView() { return cameraView; }
     public Loading getLoadingAnimation() { return cameraLoading; }
-    public boolean isFirstCapture() { return firstCapture; }
-    public void setFirstCaptureFalse() { this.firstCapture = false; }
-    private Region createSpacer(double amount) {
-        Region temp = new Region();
-        temp.setPrefHeight(amount);
-        return temp;
-    }
-    private void createExitButtonAction(CameraController cameraController) {
-        exitButton.setOnAction(event -> {
-            cameraController.stopCapture();
-            System.exit(0);
-        });
+    
+    private void createExitButtonAction(CameraController cc) { 
+        exitButton.setOnAction(e -> { cc.stopCapture(); System.exit(0); }); 
     }
 }

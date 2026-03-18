@@ -34,6 +34,10 @@ public class RockPaperScissors {
     /** The Timeline to manage how often a prediction is made */
     private Timeline timeline;
 
+    private String lastDetectedClass = "";
+    private int detectionCounter = 0;
+    private final int CONFIRMATION_THRESHOLD = 3; // Berapa kali deteksi harus sama (3x ≈ 1.5 - 2 detik)
+
     /**
      * Constructor for the RockPaperScissors class.
      * Sets up the window using the primaryStage, initializes the model
@@ -114,47 +118,57 @@ public class RockPaperScissors {
      * winner, and loading the game over screen if the game is over.
      */
     public void updateGame() {
-    // Kita buat Timeline yang berjalan secara berkala
-        timeline = new Timeline(new KeyFrame(Duration.seconds(3), event -> {
-            String predictedClass = cameraController.getPredictedClass();
-            double predictedScore = cameraController.getPredictedScore();
+        timeline = new Timeline(new KeyFrame(Duration.seconds(0.5), event -> {
+            String currentPrediction = cameraController.getPredictedClass();
+            
+            // MATIKAN LOADING: Begitu ada prediksi (meskipun neutral), matikan loading
+            if (currentPrediction != null) {
+                game.stopLoading(); 
+            }
 
-            if (predictedClass != null) {
-                // Tampilkan apa yang ditangkap kamera
-                game.showUserResponse(predictedClass, predictedScore);
+            if (currentPrediction != null && !currentPrediction.toLowerCase().contains("neutral")) {
+                // Logika konfirmasi tangan (seperti sebelumnya)
+                if (currentPrediction.equals(lastDetectedClass)) {
+                    detectionCounter++;
+                    game.updateGameResult("MENGUNCI: " + currentPrediction.toUpperCase() + " (" + detectionCounter + "/3)");
+                } else {
+                    lastDetectedClass = currentPrediction;
+                    detectionCounter = 1;
+                }
 
-                // Ambil pilihan komputer dan tentukan pemenang
-                String computerChoice = logic.getComputerChoice();
-                String winner = logic.determineWinner(predictedClass, computerChoice);
-                
-                // Tampilkan hasil ke layar (MainScene)
-                game.updateGameResult(winner);
-
-                // --- BAGIAN JEDA (PAUSE) ---
-                // 1. Hentikan Timeline agar tidak "nyepam" hasil terus-menerus
-                timeline.pause();
-
-                // 2. Buat jeda selama 3 detik agar user bisa baca hasilnya
-                PauseTransition pause = new PauseTransition(Duration.seconds(3));
-                
-                pause.setOnFinished(e -> {
-                    // 3. Setelah 3 detik, cek apakah game benar-benar berakhir atau lanjut
-                    if (logic.isGameOver()) {
-                        loadGameOver(winner);
-                    } else {
-                        // Jika belum kiamat, jalankan lagi Timeline untuk ronde berikutnya
-                        timeline.play();
-                        game.updateGameResult("Siap? Keluarkan tanganmu!");
-                    }
-                });
-
-                pause.play();
+                if (detectionCounter >= 3) {
+                    timeline.pause();
+                    prosesHasilRonde(currentPrediction);
+                }
+            } else {
+                detectionCounter = 0;
+                game.updateGameResult("Ayo, tunjukkan tanganmu!");
             }
         }));
-
-        // Tetap INDEFINITE, tapi kita kontrol pakai pause() dan play() di atas
         timeline.setCycleCount(Timeline.INDEFINITE);
         timeline.play();
+    }
+
+    private void prosesHasilRonde(String userChoice) {
+        String computerMove = logic.getComputerChoice();
+        game.showUserResponse(userChoice, 0);
+        game.showComputerChoice(computerMove);
+        
+        String result = logic.determineWinner(userChoice, computerMove);
+        game.updateGameResult(result);
+
+        PauseTransition pause = new PauseTransition(Duration.seconds(4));
+        pause.setOnFinished(e -> {
+            if (logic.isGameOver()) {
+                loadGameOver(result);
+            } else {
+                game.showComputerChoice("MENUNGGU...");
+                game.updateGameResult("SIAP UNTUK RONDE BERIKUTNYA?");
+                detectionCounter = 0;
+                timeline.play();
+            }
+        });
+        pause.play();
     }
 
     /**
@@ -163,22 +177,19 @@ public class RockPaperScissors {
      *
      * @param winner the name of the winner of the game
      */
-    public void loadGameOver(String winner) {
-        // Retrieve the playAgainButton from the GameOverScene
-        Button playAgainButton = gameOver.getPlayAgainButton();
+    public void loadGameOver(String winnerText) {
+        // Ambil statistik lengkap dari logic
+        String finalStats = logic.getFinalStats();
 
-        // Set the playAgainButton to reset the game when clicked
+        Button playAgainButton = gameOver.getPlayAgainButton();
         playAgainButton.setOnAction(event -> {
             resetGame();
         });
 
-        // Create the GameOverScene layout
-        Scene gameOverScene = gameOver.createGameOverScene(winner, cameraController);
+        // Kirim statistik ke layar Game Over
+        Scene gameOverScene = gameOver.createGameOverScene(finalStats, cameraController);
 
-        // Set the GameOverScene in the window
         window.setScene(gameOverScene);
-
-        // Stop the timeline
         timeline.stop();
     }
 
@@ -202,5 +213,7 @@ public class RockPaperScissors {
             timeline.play();
         }
     }
+
+    
 
 }
