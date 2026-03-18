@@ -6,84 +6,46 @@ public class GameLogic {
 
     private boolean gameOver;
     private Random rand;
+    private int userScore = 0;
+    private int computerScore = 0;
 
-    /**
-     * Constructor untuk GameLogic.
-     */
     public GameLogic() {
         this.gameOver = false;
         this.rand = new Random(); 
     }
 
-    /**
-     * Memilih "rock", "paper", atau "scissors" secara acak.
-     */
     public String getComputerChoice() {
         String[] choices = {"rock", "paper", "scissors"};
-        int randomIndex = rand.nextInt(choices.length);
-        return choices[randomIndex];
+        return choices[rand.nextInt(choices.length)];
     }
 
-    /**
-     * Menentukan pemenang. 
-     * Menggunakan .contains() agar cocok dengan label "0 rock", "1 paper", dsb.
-     */
     public String determineWinner(String predictedClass, String computerChoice) {
-        // 1. Bersihkan input (huruf kecil dan hapus spasi)
         String user = predictedClass.toLowerCase().trim();
         String computer = computerChoice.toLowerCase().trim();
 
-        // Debugging di terminal VS Code untuk melihat apa yang ditangkap kamera
-        System.out.println("DEBUG -> User: [" + user + "] vs Computer: [" + computer + "]");
+        // Jika yang terdeteksi adalah neutral, jangan hitung skor
+        if (user.contains("neutral")) {
+            return "Tangan tidak terlihat...";
+        }
 
-        // 2. Cek apakah seri
-        // (Misal user "0 rock" dan computer "rock", maka dianggap seri)
+        // Logika Seri
         if (user.contains(computer) || computer.contains(user)) {
-            return "User: " + user + " | Comp: " + computer + " → " + getTieResult();
+            return "SERI! [" + userScore + " - " + computerScore + "]";
         }
 
-        // 3. Logika User Menang
-        if (
-            (user.contains("rock") && computer.equals("scissors")) ||
+        // Logika User Menang
+        if ((user.contains("rock") && computer.equals("scissors")) ||
             (user.contains("paper") && computer.equals("rock")) ||
-            (user.contains("scissors") && computer.equals("paper"))
-        ) {
-            return "User: " + user + " | Comp: " + computer + " → " + getUserWinnerResult();
+            (user.contains("scissors") && computer.equals("paper"))) {
+            userScore++;
+            return "KAMU MENANG! [" + userScore + " - " + computerScore + "]";
         }
 
-        // 4. Logika Komputer Menang
-        if (
-            (computer.equals("rock") && user.contains("scissors")) ||
-            (computer.equals("paper") && user.contains("rock")) ||
-            (computer.equals("scissors") && user.contains("paper"))
-        ) {
-            return "User: " + user + " | Comp: " + computer + " → " + getComputerWinnerResult();
-        }
-
-        // 5. Jika label tidak dikenal (misal "neutral" atau "background")
-        return "User: " + user + " | Comp: " + computer + " → Waiting for valid gesture...";
+        // Logika Komputer Menang
+        computerScore++;
+        return "KOMPUTER MENANG! [" + userScore + " - " + computerScore + "]";
     }
 
-    public String getTieResult() {
-        this.gameOver = true;
-        return "It's a Tie!";
-    }
-
-    public String getUserWinnerResult() {
-        this.gameOver = true;
-        return "You Win!";
-    }
-
-    public String getComputerWinnerResult() {
-        this.gameOver = true;
-        return "Computer Wins!";
-    }
-
-    public boolean isGameOver() {
-        return gameOver;
-    }
-
-    public void resetLogic() {
-        this.gameOver = false;
-    }
+    public boolean isGameOver() { return gameOver; }
+    public void resetLogic() { this.gameOver = false; }
 }

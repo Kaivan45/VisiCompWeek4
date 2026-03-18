@@ -1,7 +1,8 @@
 package com.codedotorg;
 
 import com.codedotorg.modelmanager.CameraController;
-
+import javafx.animation.KeyFrame;
+import javafx.animation.Timeline;
 import javafx.application.Platform;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
@@ -10,41 +11,54 @@ import javafx.scene.control.Label;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
+import javafx.util.Duration;
 
 public class MainScene {
     
-    /** The root layout of the main scene */
     private VBox rootLayout;
-
-    /** Displays the camera feed in the app */
     private ImageView cameraView;
-
-    /** Displays the title of the app */
     private Label titleLabel;
-
-    /** Displays the computer's choice */
     private Label computerChoiceLabel;
-
-    /** Displays the predicted class and confidence score */
     private Label predictionLabel;
-
-    /** Displays a prompt to tell the user to make a choice */
     private Label promptLabel;
-
-    /** Button to exit the app */
     private Button exitButton;
-
-    /** The loading animation while the camera is loading */
     private Loading cameraLoading;
-
-    /** Whether or not this is the first time the camera has loaded */
     private boolean firstCapture;
 
+    private int counter = 3;
+    private boolean isCounting = false;
+
     /**
-     * Constructs a new MainScene object.
-     * Initializes the cameraView, progress, exitButton, titleLabel, computerChoiceLabel,
-     * predictionLabel, promptLabel, cameraLoadingLabel, and firstCapture.
+     * FUNGSI BARU: Menampilkan hasil akhir ke layar
+     * Panggil ini dari RockPaperScissors.java atau App.java
      */
+    public void updateGameResult(String resultText) {
+        Platform.runLater(() -> {
+            // Kita gunakan promptLabel atau titleLabel untuk pamer hasil agar terlihat besar
+            promptLabel.setText(resultText); 
+            System.out.println("Tampilan Layar: " + resultText);
+        });
+    }
+
+    public void startCountdown() {
+        if (isCounting) return;
+        isCounting = true;
+
+        Timeline timeline = new Timeline(new KeyFrame(Duration.seconds(1), e -> {
+            if (counter > 0) {
+                Platform.runLater(() -> promptLabel.setText("SIAP-SIAP: " + counter));
+                counter--;
+            } else {
+                Platform.runLater(() -> promptLabel.setText("GO!"));
+                isCounting = false;
+                counter = 3;
+            }
+        }));
+        
+        timeline.setCycleCount(4);
+        timeline.play();
+    }
+
     public MainScene() {
         cameraView = new ImageView();
         cameraView.setId("camera");
@@ -56,129 +70,66 @@ public class MainScene {
 
         computerChoiceLabel = new Label("");
         predictionLabel = new Label("");
-        promptLabel = new Label("Make your choice!");
+        promptLabel = new Label("Make your choice!"); // Ini yang akan kita update
 
         cameraLoading = new Loading();  
         firstCapture = true; 
     }
 
-    /**
-     * Returns the camera view ImageView object.
-     *
-     * @return the camera view ImageView object
-     */
-    public ImageView getCameraView() {
-        return cameraView;
-    }
-
-    /**
-     * Returns the loading animation
-     * 
-     * @return the Loading object for the loading animation
-     */
-    public Loading getLoadingAnimation() {
-        return cameraLoading;
-    }
-
-    /**
-     * Creates the main screen of the game.
-     * 
-     * @return the main scene of the game
-     */
     public Scene createMainScene(CameraController cameraController) {
-        // Sets the action for when the exit button is clicked
         createExitButtonAction(cameraController);
 
-        // Initialize the root layout
         rootLayout = new VBox();
         rootLayout.setAlignment(Pos.CENTER);
 
-        // Create spacers for above and below the cameraView
         Region cameraSpacer1 = createSpacer(20);
         Region cameraSpacer2 = createSpacer(20);
-
-        // Create spacer for above the exit button
         Region buttonSpacer = createSpacer(10);
 
-        // Add the title label, prompt label, loading animation, camera view, prediction label, and exit button to the layout
         rootLayout.getChildren().addAll(titleLabel, promptLabel, cameraLoading.getCameraLoadingLabel(),
-            cameraSpacer1, cameraView, cameraSpacer2, cameraLoading.getProgressIndicator(), computerChoiceLabel, predictionLabel, buttonSpacer, exitButton);
+            cameraSpacer1, cameraView, cameraSpacer2, cameraLoading.getProgressIndicator(), 
+            computerChoiceLabel, predictionLabel, buttonSpacer, exitButton);
 
         if (!isFirstCapture()) {
             cameraLoading.hideLoadingAnimation(rootLayout, cameraView);
-        }
-        else {
+        } else {
             setFirstCaptureFalse();
         }
 
-        // Creates a new scene and set the layout as its root
         Scene mainScene = new Scene(rootLayout, 600, 750);
         mainScene.getStylesheets().add(getClass().getResource("/styles.css").toExternalForm());
 
-        // Returns the main scene
         return mainScene;
     }
 
-    /**
-     * Returns whether this is the first capture of the game.
-     * 
-     * @return true if this is the first capture, false otherwise.
-     */
-    public boolean isFirstCapture() {
-        return firstCapture;
-    }
-    
-    /**
-     * Sets the boolean value of firstCapture to false.
-     */
-    public void setFirstCaptureFalse() {
-        this.firstCapture = false;
+    public void showUserResponse(String predictedClass, double predictedScore) {
+        cameraLoading.hideLoadingAnimation(rootLayout, cameraView);
+        
+        // Membersihkan nama label (misal "0 rock" jadi "rock")
+        String user = predictedClass.contains(" ") ? 
+                       predictedClass.substring(predictedClass.indexOf(" ") + 1) : 
+                       predictedClass;
+
+        int percentage = (int)(predictedScore * 100);
+        String userResult = "User: " + user + " (" + percentage + "%)";
+
+        Platform.runLater(() -> predictionLabel.setText(userResult));
     }
 
-    /**
-     * Sets the action for the exit button. When clicked, it
-     * stops the camera capture and exits the program.
-     */
+    // ... (Fungsi helper lainnya tetap sama)
+    public ImageView getCameraView() { return cameraView; }
+    public Loading getLoadingAnimation() { return cameraLoading; }
+    public boolean isFirstCapture() { return firstCapture; }
+    public void setFirstCaptureFalse() { this.firstCapture = false; }
+    private Region createSpacer(double amount) {
+        Region temp = new Region();
+        temp.setPrefHeight(amount);
+        return temp;
+    }
     private void createExitButtonAction(CameraController cameraController) {
         exitButton.setOnAction(event -> {
             cameraController.stopCapture();
             System.exit(0);
         });
     }
-
-    /**
-     * Displays the predicted user response on the UI.
-     * 
-     * @param predictedClass The predicted class of the user response.
-     * @param predictedScore The predicted score of the user response.
-     */
-    public void showUserResponse(String predictedClass, double predictedScore) {
-        // Hide the loading animation
-        cameraLoading.hideLoadingAnimation(rootLayout, cameraView);
-        
-        // Get the predicted class without the leading number
-        String user = predictedClass.substring(predictedClass.indexOf(" ") + 1);
-
-        // Convert the predicted score to an integer percentage
-        int percentage = (int)(predictedScore * 100);
-
-        // Create a String with the predicted class and confidence score
-        String userResult = "User: " + user + " (" + percentage + "% Confidence)";
-
-        // Update the predictionLabel to show the user's response and score
-        Platform.runLater(() -> predictionLabel.setText(userResult));
-    }
-
-    /**
-     * Creates a spacer region with the specified height.
-     * 
-     * @param amount the preferred height of the spacer region
-     * @return a Region object with the specified height
-     */
-    private Region createSpacer(double amount) {
-        Region temp = new Region();
-        temp.setPrefHeight(amount);
-        return temp;
-    }
-    
 }

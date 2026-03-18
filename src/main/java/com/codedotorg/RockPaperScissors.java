@@ -114,38 +114,46 @@ public class RockPaperScissors {
      * winner, and loading the game over screen if the game is over.
      */
     public void updateGame() {
+    // Kita buat Timeline yang berjalan secara berkala
         timeline = new Timeline(new KeyFrame(Duration.seconds(3), event -> {
-            // Get the predicted class and score from the CameraController
             String predictedClass = cameraController.getPredictedClass();
             double predictedScore = cameraController.getPredictedScore();
 
             if (predictedClass != null) {
-                // Show the user's response and confidence score in the app
+                // Tampilkan apa yang ditangkap kamera
                 game.showUserResponse(predictedClass, predictedScore);
 
-                // Get the computer's choice
+                // Ambil pilihan komputer dan tentukan pemenang
                 String computerChoice = logic.getComputerChoice();
-
-                // Get the winner
                 String winner = logic.determineWinner(predictedClass, computerChoice);
                 
-                if (logic.isGameOver()) {
-                    // Create a pause transition of 3 seconds
-                    PauseTransition pause = new PauseTransition(Duration.seconds(3));
+                // Tampilkan hasil ke layar (MainScene)
+                game.updateGameResult(winner);
 
-                    // Set the action to execute after the pause
-                    pause.setOnFinished(e -> loadGameOver(winner));
+                // --- BAGIAN JEDA (PAUSE) ---
+                // 1. Hentikan Timeline agar tidak "nyepam" hasil terus-menerus
+                timeline.pause();
 
-                    // Start the pause transition
-                    pause.play();
-                }
+                // 2. Buat jeda selama 3 detik agar user bisa baca hasilnya
+                PauseTransition pause = new PauseTransition(Duration.seconds(3));
+                
+                pause.setOnFinished(e -> {
+                    // 3. Setelah 3 detik, cek apakah game benar-benar berakhir atau lanjut
+                    if (logic.isGameOver()) {
+                        loadGameOver(winner);
+                    } else {
+                        // Jika belum kiamat, jalankan lagi Timeline untuk ronde berikutnya
+                        timeline.play();
+                        game.updateGameResult("Siap? Keluarkan tanganmu!");
+                    }
+                });
+
+                pause.play();
             }
         }));
 
-        // Specify that the animation should repeat indefinitely
+        // Tetap INDEFINITE, tapi kita kontrol pakai pause() dan play() di atas
         timeline.setCycleCount(Timeline.INDEFINITE);
-
-        // Start the animation
         timeline.play();
     }
 
